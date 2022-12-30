@@ -10,7 +10,7 @@
 VALUE cBitset;
 
 typedef struct {
-    int len;
+    size_t len;
     uint64_t * data;
 } Bitset;
 
@@ -31,7 +31,7 @@ Bitset * bitset_new() {
     return (Bitset *) calloc(1, sizeof(Bitset));
 }
 
-void bitset_setup(Bitset * bs, int len) {
+void bitset_setup(Bitset * bs, size_t len) {
     bs->len = len;
     bs->data = (uint64_t *) calloc(INTS(bs), sizeof(uint64_t));
 }
@@ -58,8 +58,8 @@ static VALUE rb_bitset_alloc(VALUE klass) {
 static VALUE rb_bitset_initialize(VALUE self, VALUE ary) {
     Bitset * bs = get_bitset(self);
     if (RB_TYPE_P(ary, T_ARRAY)) {
-        int i;
-        int len = (int) RARRAY_LEN(ary);
+        size_t i;
+        size_t len = (size_t) RARRAY_LEN(ary);
         bitset_setup(bs, len);
         for (i = 0; i < len; ++i) {
             // This could be more efficient, but if you're converting
@@ -70,14 +70,14 @@ static VALUE rb_bitset_initialize(VALUE self, VALUE ary) {
             }
         }
     } else {
-        bitset_setup(bs, NUM2INT(ary));
+        bitset_setup(bs, NUM2ULL(ary));
     }
     return self;
 }
 
 static VALUE rb_bitset_size(VALUE self, VALUE len) {
     Bitset * bs = get_bitset(self);
-    return INT2NUM(bs->len);
+    return ULL2NUM(bs->len);
 }
 
 static void raise_index_error() {
@@ -85,7 +85,7 @@ static void raise_index_error() {
     rb_raise(rb_eIndexError, "Index out of bounds");
 }
 
-static void validate_index(Bitset * bs, int idx) {
+static void validate_index(Bitset * bs, size_t idx) {
     if(idx < 0 || idx >= bs->len)
         raise_index_error();
 }
@@ -97,7 +97,7 @@ static void verify_equal_size(Bitset * bs1, Bitset * bs2) {
    }
 }
 
-void assign_bit(Bitset * bs, int idx, VALUE value) {
+void assign_bit(Bitset * bs, size_t idx, VALUE value) {
     if(NIL_P(value) || value == Qfalse)
         _clear_bit(bs, idx);
     else
@@ -106,34 +106,34 @@ void assign_bit(Bitset * bs, int idx, VALUE value) {
 
 static VALUE rb_bitset_aref(VALUE self, VALUE index) {
     Bitset * bs = get_bitset(self);
-    int idx = NUM2INT(index);
+    size_t idx = NUM2ULL(index);
     validate_index(bs, idx);
     return _get_bit(bs, idx) > 0 ? Qtrue : Qfalse;
 }
 
 static VALUE rb_bitset_aset(VALUE self, VALUE index, VALUE value) {
     Bitset * bs = get_bitset(self);
-    int idx = NUM2INT(index);
+    size_t idx = NUM2ULL(index);
     validate_index(bs, idx);
     assign_bit(bs, idx, value);
     return Qtrue;
 }
 
-static VALUE rb_bitset_set(int argc, VALUE * argv, VALUE self) {
-    int i;
+static VALUE rb_bitset_set(size_t argc, VALUE * argv, VALUE self) {
+    size_t i;
     Bitset * bs = get_bitset(self);
 
     if (argc == 1 && rb_obj_is_kind_of(argv[0], rb_const_get(rb_cObject, rb_intern("Array")))) {
         for(i = 0; i < RARRAY_LEN(argv[0]); i++) {
             VALUE index = RARRAY_PTR(argv[0])[i];
-            int idx = NUM2INT(index);
+            size_t idx = NUM2ULL(index);
             validate_index(bs, idx);
             _set_bit(bs, idx);
         }
     } else {
         for(i = 0; i < argc; i++) {
             VALUE index = argv[i];
-            int idx = NUM2INT(index);
+            size_t idx = NUM2ULL(index);
             validate_index(bs, idx);
             _set_bit(bs, idx);
         }
@@ -141,21 +141,21 @@ static VALUE rb_bitset_set(int argc, VALUE * argv, VALUE self) {
     return Qtrue;
 }
 
-static VALUE rb_bitset_clear(int argc, VALUE * argv, VALUE self) {
-    int i;
+static VALUE rb_bitset_clear(size_t argc, VALUE * argv, VALUE self) {
+    size_t i;
     Bitset * bs = get_bitset(self);
 
     if (argc == 1 && rb_obj_is_kind_of(argv[0], rb_const_get(rb_cObject, rb_intern("Array")))) {
         for(i = 0; i < RARRAY_LEN(argv[0]); i++) {
             VALUE index = RARRAY_PTR(argv[0])[i];
-            int idx = NUM2INT(index);
+            size_t idx = NUM2ULL(index);
             validate_index(bs, idx);
             _clear_bit(bs, idx);
         }
     } else {
         for(i = 0; i < argc; i++) {
             VALUE index = argv[i];
-            int idx = NUM2INT(index);
+            size_t idx = NUM2ULL(index);
             validate_index(bs, idx);
             _clear_bit(bs, idx);
         }
@@ -163,12 +163,12 @@ static VALUE rb_bitset_clear(int argc, VALUE * argv, VALUE self) {
     return Qtrue;
 }
 
-static VALUE rb_bitset_clear_p(int argc, VALUE * argv, VALUE self) {
-    int i;
+static VALUE rb_bitset_clear_p(size_t argc, VALUE * argv, VALUE self) {
+    size_t i;
     Bitset * bs = get_bitset(self);
     for(i = 0; i < argc; i++) {
         VALUE index = argv[i];
-        int idx = NUM2INT(index);
+        size_t idx = NUM2ULL(index);
         validate_index(bs, idx);
         if(_get_bit(bs, idx) > 0)
             return Qfalse;
@@ -176,12 +176,12 @@ static VALUE rb_bitset_clear_p(int argc, VALUE * argv, VALUE self) {
     return Qtrue;
 }
 
-static VALUE rb_bitset_set_p(int argc, VALUE * argv, VALUE self) {
-    int i;
+static VALUE rb_bitset_set_p(size_t argc, VALUE * argv, VALUE self) {
+    size_t i;
     Bitset * bs = get_bitset(self);
     for(i = 0; i < argc; i++) {
         VALUE index = argv[i];
-        int idx = NUM2INT(index);
+        size_t idx = NUM2ULL(index);
         validate_index(bs, idx);
         if(_get_bit(bs, idx) == 0)
             return Qfalse;
@@ -189,10 +189,10 @@ static VALUE rb_bitset_set_p(int argc, VALUE * argv, VALUE self) {
     return Qtrue;
 }
 
-static int cardinality(Bitset * bs) {
-    int i;
-    int max = INTS(bs);
-    int count = 0;
+static size_t cardinality(Bitset * bs) {
+    size_t i;
+    size_t max = INTS(bs);
+    size_t count = 0;
     for(i = 0; i < max; i++) {
         count += psnip_builtin_popcount64(bs->data[i]);
     }
@@ -201,15 +201,15 @@ static int cardinality(Bitset * bs) {
 
 static VALUE rb_bitset_cardinality(VALUE self) {
     Bitset * bs = get_bitset(self);
-    return INT2NUM(cardinality(bs));
+    return ULL2NUM(cardinality(bs));
 }
 
 static VALUE rb_bitset_intersect(VALUE self, VALUE other) {
     Bitset * bs = get_bitset(self);
     Bitset * other_bs = get_bitset(other);
     Bitset * new_bs;
-    int max = INTS(bs);
-    int i;
+    size_t max = INTS(bs);
+    size_t i;
 
     verify_equal_size(bs, other_bs);
     new_bs = bitset_new();
@@ -228,8 +228,8 @@ static VALUE rb_bitset_union(VALUE self, VALUE other) {
     Bitset * bs = get_bitset(self);
     Bitset * other_bs = get_bitset(other);
     Bitset * new_bs;
-    int max = INTS(bs);
-    int i;
+    size_t max = INTS(bs);
+    size_t i;
 
     verify_equal_size(bs, other_bs);
     new_bs = bitset_new();
@@ -248,8 +248,8 @@ static VALUE rb_bitset_difference(VALUE self, VALUE other) {
     Bitset * bs = get_bitset(self);
     Bitset * other_bs = get_bitset(other);
     Bitset * new_bs;
-    int max = INTS(bs);
-    int i;
+    size_t max = INTS(bs);
+    size_t i;
 
     verify_equal_size(bs, other_bs);
     new_bs = bitset_new();
@@ -268,8 +268,8 @@ static VALUE rb_bitset_xor(VALUE self, VALUE other) {
     Bitset * bs = get_bitset(self);
     Bitset * other_bs = get_bitset(other);
     Bitset * new_bs;
-    int max = INTS(bs);
-    int i;
+    size_t max = INTS(bs);
+    size_t i;
 
     verify_equal_size(bs, other_bs);
     new_bs = bitset_new();
@@ -287,8 +287,8 @@ static VALUE rb_bitset_xor(VALUE self, VALUE other) {
 static VALUE rb_bitset_not(VALUE self) {
     Bitset * bs = get_bitset(self);
     Bitset * new_bs = bitset_new();
-    int max = INTS(bs);
-    int i;
+    size_t max = INTS(bs);
+    size_t i;
 
     bitset_setup(new_bs, bs->len);
     for(i = 0; i < max; i++) {
@@ -304,7 +304,7 @@ static VALUE rb_bitset_not(VALUE self) {
 static VALUE rb_bitset_to_s(VALUE self) {
     Bitset * bs = get_bitset(self);
 
-    int i;
+    size_t i;
     char * data = malloc(bs->len + 1);
     for(i = 0; i < bs->len; i++) {
         data[i] = _get_bit(bs, i)  ? '1' : '0';
@@ -315,10 +315,10 @@ static VALUE rb_bitset_to_s(VALUE self) {
 }
 
 static VALUE rb_bitset_from_s(VALUE self, VALUE s) {
-    int length = RSTRING_LEN(s);
+    size_t length = RSTRING_LEN(s);
     char* data = StringValuePtr(s);
     Bitset * new_bs = bitset_new();
-    int i;
+    size_t i;
 
     bitset_setup(new_bs, length);
 
@@ -335,21 +335,21 @@ static VALUE rb_bitset_hamming(VALUE self, VALUE other) {
     Bitset * bs = get_bitset(self);
     Bitset * other_bs = get_bitset(other);
 
-    int max = INTS(bs);
-    int count = 0;
-    int i;
+    size_t max = INTS(bs);
+    size_t count = 0;
+    size_t i;
     for(i = 0; i < max; i++) {
         uint64_t segment = bs->data[i];
         uint64_t other_segment = other_bs->data[i];
         count += psnip_builtin_popcount64(segment ^ other_segment);
     }
 
-    return INT2NUM(count);
+    return ULL2NUM(count);
 }
 
 static VALUE rb_bitset_each(VALUE self) {
     Bitset * bs = get_bitset(self);
-    int i;
+    size_t i;
 
     for(i = 0; i < bs->len; i++) {
         rb_yield(_get_bit(bs, i) ? Qtrue : Qfalse);
@@ -363,7 +363,7 @@ static VALUE rb_bitset_marshall_dump(VALUE self) {
     VALUE hash = rb_hash_new();
     VALUE data = rb_str_new((const char *) bs->data, BYTES(bs));
 
-    rb_hash_aset(hash, ID2SYM(rb_intern("len")), UINT2NUM(bs->len));
+    rb_hash_aset(hash, ID2SYM(rb_intern("len")), ULL2NUM(bs->len));
     rb_hash_aset(hash, ID2SYM(rb_intern("data")), data);
 
     return hash;
@@ -371,7 +371,7 @@ static VALUE rb_bitset_marshall_dump(VALUE self) {
 
 static VALUE rb_bitset_marshall_load(VALUE self, VALUE hash) {
     Bitset * bs = get_bitset(self);
-    int len = NUM2INT(rb_hash_aref(hash, ID2SYM(rb_intern("len"))));
+    size_t len = NUM2ULL(rb_hash_aref(hash, ID2SYM(rb_intern("len"))));
 
     VALUE data = rb_hash_aref(hash, ID2SYM(rb_intern("data")));
 
@@ -385,11 +385,11 @@ static VALUE rb_bitset_marshall_load(VALUE self, VALUE hash) {
 
 static VALUE rb_bitset_to_binary_array(VALUE self) {
     Bitset * bs = get_bitset(self);
-    int i;
+    size_t i;
 
     VALUE array = rb_ary_new2(bs->len / 2);
     for(i = 0; i < bs->len; i++) {
-        rb_ary_push(array, INT2NUM(_get_bit(bs, i) > 0 ? 1 : 0));
+        rb_ary_push(array, ULL2NUM(_get_bit(bs, i) > 0 ? 1 : 0));
     }
 
     return array;
@@ -397,7 +397,7 @@ static VALUE rb_bitset_to_binary_array(VALUE self) {
 
 static VALUE rb_bitset_dup(VALUE self) {
     Bitset * bs = get_bitset(self);
-    int max = INTS(bs);
+    size_t max = INTS(bs);
 
     Bitset * new_bs = bitset_new();
     bitset_setup(new_bs, bs->len);
@@ -408,20 +408,20 @@ static VALUE rb_bitset_dup(VALUE self) {
 
 /* Yield the bit numbers of each set bit in sequence to a block. If
    there is no block, return an array of those numbers. */
-static VALUE rb_bitset_each_set(int argc, VALUE * argv,  VALUE self) {
+static VALUE rb_bitset_each_set(size_t argc, VALUE * argv,  VALUE self) {
     Bitset * bs = get_bitset(self);
-    int seg_no;
-    int max = INTS(bs);
+    size_t seg_no;
+    size_t max = INTS(bs);
     uint64_t* seg_ptr = bs->data;
-    int block_p = rb_block_given_p();
+    size_t block_p = rb_block_given_p();
     VALUE ary = Qnil;
-    int set_bit_no = -1;
+    size_t set_bit_no = -1;
 
     /* If there is one argument, it is an index into the notional
        output array, and return an int. If there are two arguments,
        return up to <n> arguments where is the second argument. */
-    int min_set_bit_no = (argc > 0) ? NUM2INT(argv[0]) : 0;
-    int max_set_bit_no;
+    size_t min_set_bit_no = (argc > 0) ? NUM2ULL(argv[0]) : 0;
+    size_t max_set_bit_no;
 
     if (argc > 2) {
        VALUE error = rb_const_get(rb_cObject, rb_intern("ArgumentError"));
@@ -435,10 +435,10 @@ static VALUE rb_bitset_each_set(int argc, VALUE * argv,  VALUE self) {
     }
 
     max_set_bit_no = (argc == 0)
-        ? INT_MAX
+        ? SIZE_MAX
         : (argc == 1)
         ? (min_set_bit_no + 1)
-        : (min_set_bit_no + NUM2INT(argv[1]));
+        : (min_set_bit_no + NUM2ULL(argv[1]));
 
     if (min_set_bit_no < 0 || max_set_bit_no < min_set_bit_no)
         return Qnil;
@@ -451,17 +451,17 @@ static VALUE rb_bitset_each_set(int argc, VALUE * argv,  VALUE self) {
 
     for (seg_no = 0; seg_no < max; ++seg_no, ++seg_ptr) {
        uint64_t segment = *seg_ptr;
-       int bit_position = 0;
+       size_t bit_position = 0;
        bool finished = false;
        while (segment) {
           VALUE v;
 
           if (!(segment & 1)) {
-             int shift = psnip_builtin_ctz64(segment);
+             size_t shift = psnip_builtin_ctz64(segment);
              bit_position += shift;
              segment >>= shift;
           }
-          v = INT2NUM(_seg_no_to_bit_no(seg_no) + bit_position);
+          v = ULL2NUM(_seg_no_to_bit_no(seg_no) + bit_position);
           ++bit_position;
           segment >>= 1;
           ++set_bit_no;
@@ -490,8 +490,8 @@ static VALUE rb_bitset_each_set(int argc, VALUE * argv,  VALUE self) {
 
 static VALUE rb_bitset_empty_p(VALUE self) {
     Bitset * bs = get_bitset(self);
-    int seg_no;
-    int max = INTS(bs);
+    size_t seg_no;
+    size_t max = INTS(bs);
     uint64_t* seg_ptr = bs->data;
 
     for (seg_no = 0; seg_no < max; ++seg_no, ++seg_ptr) {
@@ -503,15 +503,15 @@ static VALUE rb_bitset_empty_p(VALUE self) {
 }
 
 static VALUE rb_bitset_values_at(VALUE self, VALUE index_array) {
-    int i;
+    size_t i;
     Bitset * bs = get_bitset(self);
-    int blen = bs->len;
-    int alen = RARRAY_LEN(index_array);
+    size_t blen = bs->len;
+    size_t alen = RARRAY_LEN(index_array);
     VALUE *ptr = RARRAY_PTR(index_array);
     Bitset * new_bs = bitset_new();
     bitset_setup(new_bs, alen);
     for (i = 0; i < alen; ++i) {
-       int idx = NUM2INT(ptr[i]);
+       size_t idx = NUM2ULL(ptr[i]);
        if (idx >= 0 && idx < blen && _get_bit(bs, idx)) {
           _set_bit(new_bs, i);
        }
@@ -522,9 +522,9 @@ static VALUE rb_bitset_values_at(VALUE self, VALUE index_array) {
 
 /** This could run a bit faster if you worked at it. */
 static VALUE rb_bitset_reverse(VALUE self, VALUE index_array) {
-    int i;
+    size_t i;
     Bitset * bs = get_bitset(self);
-    int len = bs->len;
+    size_t len = bs->len;
     Bitset * new_bs = bitset_new();
     bitset_setup(new_bs, len);
     for (i = 0; i < len; ++i) {
@@ -537,10 +537,10 @@ static VALUE rb_bitset_reverse(VALUE self, VALUE index_array) {
 }
 
 static VALUE rb_bitset_equal(VALUE self, VALUE other) {
-    int i;
+    size_t i;
     Bitset * bs = get_bitset(self);
     Bitset * other_bs = get_bitset(other);
-    int max = INTS(bs);
+    size_t max = INTS(bs);
 
     if (bs->len != other_bs->len)
        return Qfalse;
@@ -561,8 +561,8 @@ inline uint64_t difference(uint64_t a, uint64_t b) { return a & ~b; }
 static VALUE mutable(VALUE self, VALUE other, bitwise_op operator) {
     Bitset * bs = get_bitset(self);
     Bitset * other_bs = get_bitset(other);
-    int max = INTS(bs);
-    int i;
+    size_t max = INTS(bs);
+    size_t i;
     verify_equal_size(bs, other_bs);
 
     for(i = 0; i < max; i++) {
